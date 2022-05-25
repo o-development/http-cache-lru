@@ -1,7 +1,7 @@
 {
-  "name": "devtool-boilerplate",
+  "name": "web-cache-lru",
   "version": "0.0.1",
-  "description": "",
+  "description": "An implementation of the web Cache API using LRU",
   "main": "dist/index.js",
   "scripts": {
     "build": "tsc",
@@ -13,14 +13,14 @@
   },
   "repository": {
     "type": "git",
-    "url": "git+https://github.com/o-development/devtool-boilerplate.git"
+    "url": "git+https://github.com/comunica/web-cache-lru.git"
   },
   "author": "Jackson Morgan",
   "license": "MIT",
   "bugs": {
-    "url": "https://github.com/o-development/devtool-boilerplate/issues"
+    "url": "https://github.com/comunica/web-cache-lru/issues"
   },
-  "homepage": "https://github.com/o-development/devtool-boilerplate#readme",
+  "homepage": "https://github.com/comunica/web-cache-lru#readme",
   "devDependencies": {
     "@rdfjs/types": "^1.0.1",
     "@types/jest": "^27.0.3",
