@@ -6,22 +6,69 @@ Cache;
  * A Cache implementation specifified here https://w3c.github.io/ServiceWorker/#cache-interface
  */
 export class CacheLru implements Cache {
-  protected type: delete;
   protected requestResponseList: { request: Request; response: Response }[] =
     [];
-  protected;
 
-  constructor() {}
-
+  /**
+   * The add() method of the Cache interface takes a URL, retrieves it, and adds the resulting response object to the given cache.
+   * @param request The request you want to add to the cache. This can be a Request object or a URL.
+   */
   add(request: RequestInfo): Promise<void> {
-    throw new Error("Method not implemented.");
+    return this.addAll([request]);
   }
-  addAll(requests: RequestInfo[]): Promise<void> {
-    throw new Error("Method not implemented.");
+
+  /**
+   * The addAll() method of the Cache interface takes an array of URLs, retrieves them, and adds the resulting response objects to the given cache. The request objects created during retrieval become keys to the stored response operations.
+   * @param requests An array of string URLs that you want to be fetched and added to the cache. You can specify the Request object instead of the URL.
+   */
+  async addAll(requests: RequestInfo[]): Promise<void> {
+    // 2
+    const requestList: Request[] = [];
+    // 3 and 4
+    await Promise.all(
+      requests.map(async (request) => {
+        // 4.1
+        const r = new Request(request);
+        // 3.2 and 4.2
+        const scheme = new URL(r.url).protocol;
+        if (
+          !(scheme === "http:" || scheme === "https:") ||
+          r.method.toLocaleLowerCase() !== "get"
+        ) {
+          throw new TypeError(
+            "A request much have the scheme http or https and the method must be GET."
+          );
+        }
+        // HACK: Skip 4.3
+        // HACK: Skip 4.4
+        // 4.5
+        requestList.push(r);
+        // 4.7
+        const response = await fetch(r);
+        // 4.7.1
+        if (
+          response.type === "error" ||
+          response.status < 200 ||
+          response.status > 299 ||
+          response.status === 206
+        ) {
+          throw new TypeError(
+            `Server responded with status ${response.status}`
+          );
+          // 4.7.2
+        } else if (response.headers.has("Vary")) {
+          // 4.7.2.1
+          const fieldValues = response.headers.get("Vary");
+
+        }
+      })
+    );
   }
+
   delete(request: RequestInfo, options?: CacheQueryOptions): Promise<boolean> {
     throw new Error("Method not implemented.");
   }
+
   keys(
     request?: RequestInfo,
     options?: CacheQueryOptions
@@ -73,7 +120,7 @@ export class CacheLru implements Cache {
         responses.push(response)
       );
     } else {
-      const requestResponses = queryCache(r, options);
+      const requestResponses = queryCache(r, options, this.requestResponseList);
       requestResponses.forEach((requestResponse) => {
         responses.push(requestResponse.response.clone());
       });
