@@ -23,6 +23,7 @@
   "homepage": "https://github.com/comunica/web-cache-lru#readme",
   "devDependencies": {
     "@rdfjs/types": "^1.0.1",
+    "@types/http-cache-semantics": "^4.0.1",
     "@types/jest": "^27.0.3",
     "@typescript-eslint/eslint-plugin": "^5.5.0",
     "@typescript-eslint/parser": "^5.5.0",
@@ -36,5 +37,9 @@
     "typedoc": "^0.22.10",
     "typedoc-plugin-markdown": "^3.11.7",
     "typescript": "^4.5.2"
+  },
+  "dependencies": {
+    "http-cache-semantics": "^4.1.0",
+    "lru-cache": "^7.10.1"
   }
 }
