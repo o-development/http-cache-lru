@@ -2,6 +2,7 @@
  * Tests copied and modified from https://github.com/jimmywarting/cache-polyfill/tree/master/test
  */
 import { caches } from "../lib";
+import { Request, Response } from "cross-fetch";
 
 const test_url = "https://example.com/foo";
 

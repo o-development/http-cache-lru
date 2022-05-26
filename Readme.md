@@ -1,4 +1,4 @@
-# Solid-Dataset
+# web-cache-lru
 
-## Notes:
- - Any quads in the default graph will not be synced to Solid Pods, but will be added to the dataset without any syncing
+Limitiations:
+ - Match Options are not considered. Only the URL is considered

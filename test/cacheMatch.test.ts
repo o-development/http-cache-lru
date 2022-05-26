@@ -2,6 +2,7 @@
  * Tests copied and modified from https://github.com/jimmywarting/cache-polyfill/tree/master/test
  */
 import { caches } from "../lib/index";
+import { Request, Response } from "cross-fetch";
 
 describe("cache-match", () => {
   beforeEach(() => caches.delete("v1"));

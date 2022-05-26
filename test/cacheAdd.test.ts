@@ -2,6 +2,7 @@
  * Tests copied and modified from https://github.com/jimmywarting/cache-polyfill/tree/master/test
  */
 import { caches } from "../lib";
+import { Request, Response } from "cross-fetch";
 const isRes = (x) => x instanceof Response;
 // const isReq = (x) => x instanceof Request;
 
