@@ -1,11 +1,8 @@
 import LRU, { Options } from "lru-cache";
-import CachePolicy, {
-  Request as CachePolicyRequest,
-  Response as CachePolicyResponse,
-} from "http-cache-semantics";
+import CachePolicy from "http-cache-semantics";
 import defaultLruOptions from "./defaultLruOptions";
 import PolicyResponse from "./PolicyResponse";
-import { Request, Response, fetch } from "cross-fetch";
+import { Request, Response, Headers, fetch } from "cross-fetch";
 
 /**
  * A Cache implementation specifified here
@@ -37,9 +34,21 @@ export class CacheLru implements Cache {
    * added to the cache. You can specify the Request object instead of the URL.
    */
   async addAll(requests: RequestInfo[]): Promise<void> {
+    if (requests.some((request) => new Request(request).method !== "GET")) {
+      throw new TypeError(`Request must have method "GET"`);
+    }
     await Promise.all(
       requests.map(async (request) => {
         const response = await fetch(request);
+        if (
+          response.status < 200 ||
+          response.status > 299 ||
+          response.status === 206
+        ) {
+          throw new TypeError(
+            `Cannot cache. Server responded with ${response.status}`
+          );
+        }
         await this.put(request, response);
       })
     );
@@ -129,15 +138,20 @@ export class CacheLru implements Cache {
    */
   async put(requestInfo: RequestInfo, response: Response): Promise<void> {
     const request = new Request(requestInfo);
+    // Headers need to be converted to a hash because http-cache-semantics was
+    // built for an older version of headers.
+    const requestWithHashHeaders =
+      CacheLru.requestToRequestWithHashHeaders(request);
+    const responseWithHashHeaders =
+      CacheLru.responseToRequestWithHashHeaders(response);
     const policy = new CachePolicy(
-      // HACK: The "request" and "response" from CachePolicy is slightly
-      // different than the native request and response types
-      request as unknown as CachePolicyRequest,
-      response as unknown as CachePolicyResponse
+      requestWithHashHeaders,
+      responseWithHashHeaders
     );
     if (!policy.storable()) {
       throw new TypeError(`${request.url} is not storable.`);
     }
+    // Set the cache
     this.cache.set(
       request.url,
       { policy, response },
@@ -176,21 +190,56 @@ export class CacheLru implements Cache {
     request: Request,
     _options?: CacheQueryOptions
   ): Promise<[Request, Response] | undefined> {
+    const requestWithHashHeaders =
+      CacheLru.requestToRequestWithHashHeaders(request);
     const cacheResult = this.cache.get(request.url);
     if (cacheResult) {
       const { policy, response } = cacheResult;
-      if (
-        policy.satisfiesWithoutRevalidation(
-          request as unknown as CachePolicyRequest
-        )
-      ) {
+      const isSatisfied = policy.satisfiesWithoutRevalidation(
+        requestWithHashHeaders
+      );
+      if (isSatisfied) {
         const newResponse = new Response(response.body, {
           ...response,
-          headers: policy.responseHeaders() as unknown as Headers,
+          headers: new Headers(
+            policy.responseHeaders() as Record<string, string>
+          ),
         });
         return [request, newResponse];
       }
     }
     return undefined;
+  }
+
+  /**
+   * Convert a request into the old version of the request that doesn't use the
+   * Headers object
+   * @param request the request
+   * @returns A request that has hash header
+   */
+  public static requestToRequestWithHashHeaders(request: Request) {
+    return { ...request, headers: CacheLru.headersToHash(request.headers) };
+  }
+
+  /**
+   * Convert a response into the old version of the response that doesn't use
+   * the Headers object
+   * @param response the response
+   * @returns A response that has hash header
+   */
+  public static responseToRequestWithHashHeaders(response: Response) {
+    return { ...response, headers: CacheLru.headersToHash(response.headers) };
+  }
+
+  /**
+   * Convert the given headers object into a raw hash.
+   * @param headers A headers object.
+   */
+  public static headersToHash(headers: Headers): Record<string, string> {
+    const hash: Record<string, string> = {};
+    headers.forEach((value, key) => {
+      hash[key] = value;
+    });
+    return hash;
   }
 }
