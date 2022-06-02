@@ -3,10 +3,15 @@ import CachePolicy from "http-cache-semantics";
 import defaultLruOptions from "./defaultLruOptions";
 import PolicyResponse from "./PolicyResponse";
 import { Request, Response, Headers, fetch } from "cross-fetch";
+import {
+  addHashHeadersToObject,
+  requestToRequestWithHashHeaders,
+  responseToRequestWithHashHeaders,
+} from "./headerConversionHelpers";
 
 /**
  * A Cache implementation specifified here
- * https://w3c.github.io/ServiceWorker/#cache-interface
+ * https://w3c.github.io/ServiceWor5t4ker/#cache-interface
  */
 export class CacheLru implements Cache {
   private cache: LRU<string, PolicyResponse>;
@@ -34,22 +39,44 @@ export class CacheLru implements Cache {
    * added to the cache. You can specify the Request object instead of the URL.
    */
   async addAll(requests: RequestInfo[]): Promise<void> {
-    if (requests.some((request) => new Request(request).method !== "GET")) {
-      throw new TypeError(`Request must have method "GET"`);
-    }
     await Promise.all(
       requests.map(async (request) => {
-        const response = await fetch(request);
-        if (
-          response.status < 200 ||
-          response.status > 299 ||
-          response.status === 206
-        ) {
-          throw new TypeError(
-            `Cannot cache. Server responded with ${response.status}`
+        const newRequest = new Request(request);
+        const cacheResult = await this.cache.get(newRequest.url);
+        // Nothing is in the cache
+        if (!cacheResult) {
+          const response = await fetch(newRequest);
+          await this.put(newRequest, response);
+          // Something is in the cache
+        } else {
+          // Check if the response is stale
+          const oldPolicy = cacheResult.policy;
+          const oldResponse = cacheResult.response;
+          const newRequestWithHashHeaders = requestToRequestWithHashHeaders(
+            new Request(newRequest)
           );
+          // If the response is stale
+          if (
+            !oldPolicy.satisfiesWithoutRevalidation(newRequestWithHashHeaders)
+          ) {
+            addHashHeadersToObject(
+              oldPolicy.revalidationHeaders(newRequestWithHashHeaders),
+              newRequest
+            );
+            // Fetch again with new headers
+            const newResponse = await fetch(newRequest);
+            const { policy, modified } = oldPolicy.revalidatedPolicy(
+              requestToRequestWithHashHeaders(newRequest),
+              responseToRequestWithHashHeaders(newResponse)
+            );
+            const response = modified ? newResponse : oldResponse;
+            this.cache.set(
+              newRequest.url,
+              { policy, response },
+              { ttl: policy.timeToLive() }
+            );
+          }
         }
-        await this.put(request, response);
       })
     );
   }
@@ -140,10 +167,8 @@ export class CacheLru implements Cache {
     const request = new Request(requestInfo);
     // Headers need to be converted to a hash because http-cache-semantics was
     // built for an older version of headers.
-    const requestWithHashHeaders =
-      CacheLru.requestToRequestWithHashHeaders(request);
-    const responseWithHashHeaders =
-      CacheLru.responseToRequestWithHashHeaders(response);
+    const requestWithHashHeaders = requestToRequestWithHashHeaders(request);
+    const responseWithHashHeaders = responseToRequestWithHashHeaders(response);
     const policy = new CachePolicy(
       requestWithHashHeaders,
       responseWithHashHeaders
@@ -190,8 +215,7 @@ export class CacheLru implements Cache {
     request: Request,
     _options?: CacheQueryOptions
   ): Promise<[Request, Response] | undefined> {
-    const requestWithHashHeaders =
-      CacheLru.requestToRequestWithHashHeaders(request);
+    const requestWithHashHeaders = requestToRequestWithHashHeaders(request);
     const cacheResult = this.cache.get(request.url);
     if (cacheResult) {
       const { policy, response } = cacheResult;
@@ -209,37 +233,5 @@ export class CacheLru implements Cache {
       }
     }
     return undefined;
-  }
-
-  /**
-   * Convert a request into the old version of the request that doesn't use the
-   * Headers object
-   * @param request the request
-   * @returns A request that has hash header
-   */
-  public static requestToRequestWithHashHeaders(request: Request) {
-    return { ...request, headers: CacheLru.headersToHash(request.headers) };
-  }
-
-  /**
-   * Convert a response into the old version of the response that doesn't use
-   * the Headers object
-   * @param response the response
-   * @returns A response that has hash header
-   */
-  public static responseToRequestWithHashHeaders(response: Response) {
-    return { ...response, headers: CacheLru.headersToHash(response.headers) };
-  }
-
-  /**
-   * Convert the given headers object into a raw hash.
-   * @param headers A headers object.
-   */
-  public static headersToHash(headers: Headers): Record<string, string> {
-    const hash: Record<string, string> = {};
-    headers.forEach((value, key) => {
-      hash[key] = value;
-    });
-    return hash;
   }
 }
