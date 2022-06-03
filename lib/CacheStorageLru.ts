@@ -51,19 +51,10 @@ export class CacheStorageLru implements CacheStorage {
    * the match operation. The available options are:
    */
   async match(
-    request: RequestInfo,
-    options?: MultiCacheQueryOptions
+    _request: RequestInfo,
+    _options?: MultiCacheQueryOptions
   ): Promise<Response | undefined> {
-    let response: Response | undefined = undefined;
-    await Promise.all(
-      Object.values(this.caches).map(async (cache) => {
-        const matchResult = await cache.match(request, options);
-        if (matchResult && !response) {
-          response = matchResult;
-        }
-      })
-    );
-    return response;
+    throw new Error("Not Implemented");
   }
 
   /**
