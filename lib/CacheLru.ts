@@ -1,23 +1,30 @@
-import LRU, { Options } from "lru-cache";
+import LRU from "lru-cache";
 import CachePolicy from "http-cache-semantics";
-import defaultLruOptions from "./defaultLruOptions";
 import PolicyResponse from "./PolicyResponse";
-import { Request, Response, Headers, fetch } from "cross-fetch";
+import { Request, Response, Headers } from "cross-fetch";
 import {
   addHashHeadersToObject,
   requestToRequestWithHashHeaders,
   responseToRequestWithHashHeaders,
 } from "./headerConversionHelpers";
+import CacheLruOptions, {
+  applyCacheLruOptionsDefaults,
+} from "./CacheLruOptions";
 
 /**
- * A Cache implementation specifified here
- * https://w3c.github.io/ServiceWor5t4ker/#cache-interface
+ * An LRU Implementation of Cache
  */
 export class CacheLru implements Cache {
   private cache: LRU<string, PolicyResponse>;
+  private fetch: (
+    input: RequestInfo,
+    init?: RequestInit | undefined
+  ) => Promise<Response>;
 
-  constructor(lruOptions: Options<string, PolicyResponse> = defaultLruOptions) {
-    this.cache = new LRU(lruOptions);
+  constructor(optionsInput?: CacheLruOptions) {
+    const options = applyCacheLruOptionsDefaults(optionsInput);
+    this.cache = new LRU(options.lruOptions);
+    this.fetch = options.fetch;
   }
 
   /**
@@ -45,7 +52,7 @@ export class CacheLru implements Cache {
         const cacheResult = await this.cache.get(newRequest.url);
         // Nothing is in the cache
         if (!cacheResult) {
-          const response = await fetch(newRequest);
+          const response = await this.fetch(newRequest);
           await this.put(newRequest, response);
           // Something is in the cache
         } else {
@@ -64,7 +71,7 @@ export class CacheLru implements Cache {
               newRequest
             );
             // Fetch again with new headers
-            const newResponse = await fetch(newRequest);
+            const newResponse = await this.fetch(newRequest);
             const { policy, modified } = oldPolicy.revalidatedPolicy(
               requestToRequestWithHashHeaders(newRequest),
               responseToRequestWithHashHeaders(newResponse)
@@ -233,5 +240,9 @@ export class CacheLru implements Cache {
       }
     }
     return undefined;
+  }
+
+  public logCache() {
+    console.log(Array.from(this.cache.keys()));
   }
 }
