@@ -1,6 +1,6 @@
 import { CacheLru } from "../lib/CacheLru";
 import { CacheStorageLru } from "../lib/CacheStorageLru";
-import { Request } from "cross-fetch";
+import { Request, Response } from "cross-fetch";
 
 describe("CacheStorageLru", () => {
   let cacheStorage: CacheStorageLru;
@@ -41,5 +41,20 @@ describe("CacheStorageLru", () => {
     await expect(
       cacheStorage.match(new Request("https://example.com"))
     ).rejects.toThrow("Not Implemented");
+  });
+
+  it("Sets options", async () => {
+    const options = {
+      lruOptions: {
+        max: 1,
+      },
+    };
+    cacheStorage.setOptions(options);
+    const retrievedOptions = cacheStorage.getOptions();
+    expect(retrievedOptions).toEqual(options);
+    const newCache = await cacheStorage.open("v1");
+    await newCache.put(new Request("http://a.com"), new Response("a"));
+    await newCache.put(new Request("http://b.com"), new Response("b"));
+    expect((await newCache.keys()).length).toBe(1);
   });
 });

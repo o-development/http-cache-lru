@@ -1,7 +1,9 @@
 import { CacheLru } from "./CacheLru";
+import CacheLruOptions from "./CacheLruOptions";
 
 export class CacheStorageLru implements CacheStorage {
   private caches: Record<string, Cache> = {};
+  private options: CacheLruOptions | undefined;
 
   /**
    * The delete() method of the CacheStorage interface finds the Cache object
@@ -67,8 +69,16 @@ export class CacheStorageLru implements CacheStorage {
     if (this.caches[cacheName]) {
       return this.caches[cacheName];
     }
-    const newCache = new CacheLru();
+    const newCache = new CacheLru(this.options);
     this.caches[cacheName] = newCache;
     return newCache;
+  }
+
+  setOptions(options?: CacheLruOptions) {
+    this.options = options;
+  }
+
+  getOptions(): CacheLruOptions | undefined {
+    return this.options;
   }
 }

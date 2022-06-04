@@ -1,5 +1,5 @@
 {
-  "name": "web-cache-lru",
+  "name": "http-cache-lru",
   "version": "0.0.1",
   "description": "An implementation of the web Cache API using LRU",
   "main": "dist/index.js",
@@ -9,18 +9,19 @@
     "test": "jest --coverage",
     "test:watch": "jest --watch --coverage",
     "docs": "typedoc",
-    "prepublishOnly": "npm run test && npm run build && npm run docs"
+    "prepublishOnly": "npm run test && npm run build && npm run docs",
+    "example": "ts-node example/example.ts"
   },
   "repository": {
     "type": "git",
-    "url": "git+https://github.com/comunica/web-cache-lru.git"
+    "url": "git+https://github.com/comunica/http-cache-lru.git"
   },
   "author": "Jackson Morgan",
   "license": "MIT",
   "bugs": {
-    "url": "https://github.com/comunica/web-cache-lru/issues"
+    "url": "https://github.com/comunica/http-cache-lru/issues"
   },
-  "homepage": "https://github.com/comunica/web-cache-lru#readme",
+  "homepage": "https://github.com/comunica/http-cache-lru#readme",
   "devDependencies": {
     "@rdfjs/types": "^1.0.1",
     "@types/http-cache-semantics": "^4.0.1",
